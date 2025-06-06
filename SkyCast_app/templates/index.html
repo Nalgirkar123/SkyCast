@@ -1,0 +1,381 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>🌤️ SkyCast - Weather App</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            text-align: center;
+            padding: 20px;
+            transition: background 0.5s ease;
+        }
+
+        body.default {
+            background: url("{% static 'images/default.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        /* Weather backgrounds */
+        body.clear {
+            background: url("{% static 'images/clear.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
+        }
+        body.clouds {
+            background: url("{% static 'images/clouds.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
+        }
+        body.rain {
+            background: url("{% static 'images/rain.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
+        }
+        body.snow {
+            background: url("{% static 'images/snow.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
+        }
+        body.thunderstorm {
+            background: url("{% static 'images/thunderstorm.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
+        }
+        body.overcast {
+            background: url("{% static 'images/overcast.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
+        }
+        body.drizzle {
+            background: url("{% static 'images/drizzle.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
+        }
+        body.mist {
+            background: url("{% static 'images/mist.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        form {
+            margin: 20px 0;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            width: 250px;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            background-color: #0077ff;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #005fcc;
+        }
+
+        .weather {
+            font-size: 18px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.85);
+            display: inline-block;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        /* Add glowing effect on hover */
+        .weather:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2),
+                        0 0 15px rgba(183, 39, 223, 0.4); /* bluish soft glow */
+        }
+        
+
+        .emoji {
+            font-size: 24px;
+        }
+
+        .chart-container {
+            max-width: 500px;
+            margin: 2rem auto;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 1rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(5px);
+        }
+
+        canvas {
+            width: 100% !important;
+            height: auto !important;
+        }
+
+        .news-link {
+            text-decoration: none;
+            color: #007bff;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+        
+        .news-link:hover {
+            color:rgb(226, 43, 43);
+            transform: translateX(5px); /* Slight movement on hover */
+        }
+
+
+    </style>
+</head>
+
+<body class="{% if weather_data and weather_data.weather_main %}{{ weather_data.weather_main|lower }}{% else %}default{% endif %}">
+    <button id="darkModeBtn" style="position: absolute; top: 20px; right: 20px; background: #333; color: #fff; padding: 10px; border-radius: 10px;">🌙 Dark Mode</button>
+    
+    <h1>🌤️ SkyCast</h1>
+    <p>Enter your city or tap to detect your location 🌍</p>
+
+    <!-- Input and Buttons -->
+    <div class="d-flex justify-content-center align-items-center flex-wrap gap-2 mt-3">
+        <form method="post" class="d-flex">
+            {% csrf_token %}
+            <input type="text" name="city" class="form-control me-2" placeholder="Enter city name" required>
+            <button type="submit" class="btn btn-primary">Get Weather 🌈</button>
+        </form>
+        <button onclick="getLocation()" class="btn btn-primary">📍 Detect My Location</button>
+    </div>
+
+    {% if weather_data %}
+    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 2rem;">
+        <!-- Weather Info Box -->
+        <div class="weather" style="width: 300px; background-color: #f8f8f8;">
+            <h3 style="margin-bottom: 10px;">🌤️ Current Weather</h3>
+            <p class="emoji">📍 City: {{ weather_data.name }}</p>
+            <p>🌡️ Temperature: {{ weather_data.main.temp }} °C</p>
+            <p>🌥️ Weather: {{ weather_data.weather.0.description }}</p>
+            <p>💧 Humidity: {{ weather_data.main.humidity }}%</p>
+            <p>🌬️ Wind: {{ weather_data.wind.speed }} m/s</p>
+            <p>🔆 Feels Like: {{ weather_data.main.feels_like }} °C</p>
+            <p>🔺 Max Temp: {{ weather_data.main.temp_max }} °C</p>
+            <p>🔻 Min Temp: {{ weather_data.main.temp_min }} °C</p>
+        </div>
+
+        <!-- 🌅 Sunrise & Sunset -->
+        {% if sunrise_time and sunset_time %}
+        <div class="weather" style="width: 300px; background-color: #f8f8f8;">
+            <h3 style="margin-bottom: 10px;">🌅 Sun Info</h3>
+            <p>🌄 Sunrise: {{ sunrise_time }}</p>
+            <p>🌇 Sunset: {{ sunset_time }}</p>
+            <p>⏳ Day Length: {{ day_length }}</p>
+            <p>🧭 Golden Hour (approx.): {{ golden_hour_start }} - {{ golden_hour_end }}</p>
+        </div>
+        {% endif %}
+
+
+        <!-- 🕒 Local Time -->
+        {% if timezone_name %}
+        <div class="weather" style="width: 300px; background-color: #f8f8f8;">
+            <h3 style="margin-bottom: 10px;">🕰️ Local Time</h3>
+            <p>📅 {{ local_time }}</p>
+            <p>🌐 Timezone: {{ timezone_name }}</p>
+            <p>🗺️ Coordinates: {{ weather_data.coord.lat }}, {{ weather_data.coord.lon }}</p>
+            <p>🌍 Country: {{ weather_data.sys.country }}</p>
+        </div>
+        
+        {% endif %}
+        
+        <!-- News Box -->
+        {% if news_data %}
+        <div class="weather" style="width: 300px; background-color: #f8f8f8;">
+            <h3 style="margin-bottom: 10px;">📰 Local News</h3>
+            <ul style="text-align: left; padding-left: 15px;">
+                {% for article in news_data %}
+                    <li style="margin-bottom: 10px;">
+                        <a href="{{ article.url }}" target="_blank"  class= "news-link">
+                            {{ article.title|truncatechars:75 }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    
+    </div>
+    {% endif %}
+
+    <!-- Chart -->
+    {% if chart_data %}
+        <h2>📊 Temperature Chart</h2>
+        <div class="chart-container mt-4">
+            <canvas id="tempChart"></canvas>
+        </div>
+        <script>
+            const ctx = document.getElementById('tempChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: {{ chart_data.labels|safe }},
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: {{ chart_data.values|safe }},
+                        backgroundColor: 'rgba(21, 140, 220, 0.6)',
+                        borderColor: '#2980b9',
+                        borderWidth: 1,
+                        hoverBackgroundColor: 'rgba(201, 181, 53, 0.8)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#fff',
+                            titleColor: '#333',
+                            bodyColor: '#333',
+                            borderColor: '#2980b9',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.2)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        </script>
+    {% endif %}
+
+    <!-- 📈 Hourly Forecast Chart -->
+    {% if hourly_chart_data %}
+
+    <h2>🕒 Hourly Forecast</h2>
+    <div class="chart-container mt-4">
+        <canvas id="hourlyChart"></canvas>
+    </div>
+    <script>
+        const ctx2 = document.getElementById('hourlyChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: {{ hourly_chart_data.labels|safe }},
+                datasets: [{
+                    label: '🌡️ Temp (°C)',
+                    data: {{ hourly_chart_data.values|safe }},
+                    borderColor: 'rgba(230, 216, 16, 0.8)',
+                    backgroundColor: 'rgba(20, 232, 208, 0.2)',
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#ff6384'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+    </script>
+    {% endif %}
+
+
+    {% if weather_data %}
+    <h2>📍 Location on Map</h2>
+    <div style="display: flex; justify-content: center; margin-top: 1.5rem;">
+        <div id="map"
+             style="height: 300px; width: 80%; max-width: 600px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+             
+        </div>
+    </div>
+
+    <script>
+        var map = L.map('map').setView([{{ weather_data.coord.lat }}, {{ weather_data.coord.lon }}], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        L.marker([{{ weather_data.coord.lat }}, {{ weather_data.coord.lon }}]).addTo(map)
+            .bindPopup("You're here: {{ weather_data.name }}")
+            .openPopup();
+    </script>
+    {% endif %}
+
+    <!-- Geolocation Script -->
+    <script>
+        function getLocation() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+
+                    fetch(`/get_weather_by_location/?lat=${lat}&lon=${lon}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.error) {
+                                alert(`📍 You are in ${data.name}. Please type it in the search box.`);
+                            } else {
+                                alert(data.error);
+                            }
+                        });
+                }, function(error) {
+                    alert("Failed to get location.");
+                });
+            } else {
+                alert("Geolocation is not supported by your browser.");
+            }
+        }
+    </script>
+
+    <script>
+        // Auto-refresh weather data every 5 minutes (300,000 ms)
+        setInterval(function() {
+            location.reload();
+        }, 300000);
+    </script>
+
+
+    <script>
+        const darkBtn = document.getElementById('darkModeBtn');
+        darkBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+        });
+    </script>
+    
+    <style>
+    body.dark {
+        background-color: #121212;
+        color: white;
+    }
+    .weather.dark, .chart-container.dark {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    </style>
+
+</body>
+</html>
